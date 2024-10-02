@@ -1,0 +1,179 @@
+1. Py proj nix to gret shell
+2. make process compose for mongo + python
+3. what exactly packaging is?
+4. package
+5. release
+
+{
+  inputs = {
+    dream2nix.url = "github:nix-community/dream2nix";
+    nixpkgs.follows = "dream2nix/nixpkgs";
+  };
+
+  outputs =
+    { self
+    , dream2nix
+    , nixpkgs
+    ,
+    }:
+    let
+      eachSystem = nixpkgs.lib.genAttrs [
+        "aarch64-darwin"
+        "aarch64-linux"
+        "x86_64-darwin"
+        "x86_64-linux"
+      ];
+    in
+    {
+      packages = eachSystem (system: {
+        default =
+          let
+
+            pkgs = import nixpkgs {
+              inherit system;
+              config = {
+                allowBroken = true;
+                permittedInsecurePackages = [
+                  "python-2.7.18.8"
+                ];
+              };
+            };
+          in
+          dream2nix.lib.evalModules {
+
+            packageSets.nixpkgs = pkgs;
+            modules = [
+              ./default.nix # 
+              {
+                paths.projectRoot = ./explainshell;
+                paths.projectRootFile = "flake.nix";
+                paths.package = ./explainshell;
+              }
+            ];
+          };
+      });
+    };
+}
+
+
+
+
+
+
+
+
+
+
+
+
+{
+  description = "Description for the project";
+
+  inputs = {
+    flake-parts.url = "github:hercules-ci/flake-parts";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  };
+
+  outputs = inputs@{ flake-parts, ... }:
+    flake-parts.lib.mkFlake { inherit inputs; } {
+      systems = [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" "x86_64-darwin" ];
+      perSystem = { config, self', inputs', pkgs, system, ... }:
+        let pythonPackages = pkgs.python2.withPackages (ps: [ ps.flask ps.MarkupSafe ps.nose ps.pymongo ps.bashlex ps.nltk ps.asdsaddsa ]); in {
+          _module.args.pkgs = import inputs.nixpkgs {
+            inherit system;
+            config = {
+              permittedInsecurePackages = [
+                "python-2.7.18.8"
+              ];
+            };
+          };
+          packages.default = pythonPackages.pkgs.buildPythonApplication {
+            pname = "explainshell";
+            version = "0.1.0";
+            src = ./explainshell;
+          };
+        };
+    };
+}
+
+
+# Flask==0.12
+# nltk==3.4.5
+# MarkupSafe==1.1.1
+# nose==1.3.0
+# pymongo==3.13.0
+# bashlex==0.12
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{
+  config,
+  lib,
+  dream2nix,
+  ...
+}: {
+  imports = [
+    dream2nix.modules.dream2nix.pip # 
+  ];
+
+  deps = {nixpkgs, ...}: {
+    python = nixpkgs.python2; # 
+    inherit # 
+      (nixpkgs)
+      pkg-config
+      zlib
+      libjpeg
+      ;
+  };
+
+  name = "explainshell"; # 
+  version = "0.1.0";
+
+  mkDerivation = { #
+    src = ./explainshell; 
+    nativeBuildInputs = [
+      config.deps.pkg-config
+    ];
+    propagatedBuildInputs = [
+      config.deps.zlib
+      config.deps.libjpeg
+    ];
+  };
+
+  buildPythonPackage = { # 
+    pythonImportsCheck = [
+      "PIL"
+    ];
+  };
+
+  pip = {
+    requirementsList = ["${config.name}==${config.version}"]; # 
+    pipFlags = [ # 
+      "--no-binary"
+      ":all:"
+    ];
+  };
+}
+
+
+
+
+
+
+
+
+
+
+
